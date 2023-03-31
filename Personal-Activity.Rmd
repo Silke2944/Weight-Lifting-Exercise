@@ -60,7 +60,7 @@ dim(pml_training)
 ```
 
 
-## Partition the data into training, testing, and validation set
+## Partition the data into training and testing set
 
 ```{r }
 inTrain <- createDataPartition(pml_training$classe, p=0.6, list = FALSE)
