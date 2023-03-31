@@ -1,0 +1,108 @@
+---
+title: "Course Project: Prediction Personal Activity"
+output: html_document
+date: "2023-03-30"
+---
+
+## Introduction 
+A large amount of data about personal activity was collected with different devices such as a fitbit. This data can be used to calculate how much of a particular activity is performed but often not how well an activity is performed. 
+Therefore, the data used in this assignment consists of data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. These participants performed barbell lifts both correctly and incorrectly in 5 different ways. 
+
+[Human Activity Recognition](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har)
+
+The data used in this assignment is downloaded from: 
+
+```{r}
+pml_training <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", na.strings = c("NA","","#DIV/0!"))
+pml_testing <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", na.strings = c("NA","","#DIV/0!"))
+```
+
+
+## Exploratory Data Analysis 
+
+Install packages
+```{r, results = 'hide'}
+library(caret)
+library(ggplot2)
+library(rpart)
+library(rattle)
+```
+
+
+```{r, results='hide'}
+dim(pml_training)
+names(pml_training)
+str(pml_training)
+```
+
+There are 160 variables including the variable "classe" which we will trying to predict using these other variables. There are 5 possible classes of performing unilateral dumbell biceps curl: 
+
+* Class A: according to specification
+
+* Class B: throwing elbows to frong
+
+* Class C: lifting only halfway
+
+* Class D: lowering only halfway 
+
+* Class E: throwing hips to the front
+
+The first 7 variables are not related to the exercises, they include index, username, ... and can thus be removed from the dataset. The variables which have near zero values and missing values are also removed. 
+
+```{r}
+pml_training <- pml_training[, -c(1:7)]
+
+pml_training <- pml_training[, colSums(is.na(pml_training)) == 0]
+
+pml_training_nzv <- nearZeroVar(pml_training[, -ncol(pml_training)], saveMetrics = TRUE)
+
+dim(pml_training)
+```
+
+
+## Partition the data into training, testing, and validation set
+
+```{r }
+inTrain <- createDataPartition(pml_training$classe, p=0.6, list = FALSE)
+training <- pml_training[inTrain, ]
+testing <- pml_training[-inTrain, ]
+dim(training)
+dim(testing)
+```
+
+## Creation of different prediction models 
+### Decision tree model
+```{r }
+modfit_rpart <- train(classe ~., data = training, method = "rpart")
+
+pred_rpart <- predict(modfit_rpart, testing)
+
+confusionMatrix(pred_rpart, as.factor(testing$classe))
+
+```
+
+```{r, results = 'hide'}
+fancyRpartPlot(modfit_rpart$finalModel)
+```
+
+The accuracy of the decision tree model is only 58%. Another model needs to be searched that has a higher accuracy.   
+
+### Random forests 
+```{r}
+modfit_rf <- train(classe ~., data=training, method = "rf", ntree = 100)
+
+pred_rf <- predict(modfit_rf, testing)
+
+confusionMatrix(pred_rf, as.factor(testing$classe))
+```
+The accuracy of the random forests model is much higher than the first model, it has an accuracy of 99%. This model can thus be used for the final prediction on the pml-testing dataset. 
+
+```{r}
+pred_final <- predict(modfit_rf, pml_testing)
+pred_final
+```
+
+These findings will be used in the final quiz. All 20 predictions were correct. 
+
+## Acknowledgment
+Data from this project come from:  http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har 
